@@ -1,0 +1,719 @@
+---
+title: "synth_control"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+install.packages("Synth")
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(tidyverse); library(haven); library(table1); library(jtools);library(huxtable);  library(expss); library(sjPlot)
+library(plm); library(webshot); library(htmltools); library(flextable); library(tidysynth); library(microsynth); library(Synth); library(VIF); library(car)
+```
+```{r}
+setwd("C:/Users/Louar/Desktop/CWRU/Spring_2022/Economics_Capstone/Project/DataAnalysis")
+data <- read_csv("complete_data.csv")
+spec(data)
+```
+
+
+# Narc regressions
+```{r car}
+n1 <- lm(narc_per_cap~rec_legal+med_legal, data=data)
+n2 <- lm(narc_per_cap~rec_legal+med_legal+violent_per_cap+prop_per_cap+
+           hhic_inf+educ+unemp+white+black+hisp+dem_gov+officer_per_cap
+         ,data=data)
+fixed_only <- plm(narc_per_cap~rec_legal+med_legal+factor(year)-1, data=data,
+                  index = c("year", "state_agency"),
+                model="within", effect="twoways")
+#one we should use for fixed effects
+fixed_yc <- plm(narc_per_cap~rec_legal+med_legal+violent_per_cap+prop_per_cap+
+           hhic_inf+educ+unemp+white+black+hisp+dem_gov+officer_per_cap+
+           factor(year)-1, data=data, index = c("year", "state_agency"),
+                model="within", effect="twoways")
+# interaction
+fe_int <- plm(narc_per_cap~rec_legal+med_legal+violent_per_cap+prop_per_cap+
+              hhic_inf+educ+unemp+white+black+hisp+dem_gov+officer_per_cap+
+              (black*rec_legal)+factor(year)-1, 
+              data=data, index = c("year", "state_agency"),
+              model="within", effect="twoways")
+
+```
+
+```{r car}
+vif_values <- vif(n2)
+print(vif_values)
+write.csv(vif_values,"C:/Users/Louar/Desktop/CWRU/Spring_2022/Economics_Capstone/Project/DataAnalysis//vif_narc.csv" )
+```
+
+
+#display regressions for Narcotic Arrests per Capita
+```{r}
+tab_model(n1,n2,fixed_only,fixed_yc,fe_int,
+          pred.labels=c("Constant","Recreationally Legal", 
+                        "Medically Legal", 
+                        "Violent Crimes per Capita",
+                        "Property Crimes per Capita",
+                        "Median Household Income",
+                        "% Bachelor's or Higher",
+                        "Unemployment Rate",
+                        "% White","% Black", "% Hispanic", 
+                        "Governor's Political Party", 
+                        "Police Officers per Capita", 
+                        "Black*Rec_Legal"),
+          dv.labels=c("Simple OLS","Multivariate","Fixed Effects", 
+                      "FE & Controls", "Interaction"),
+          title="Table 6: Regression results for Narcotics Arrests per Capita",
+          robust=TRUE, show.ci = FALSE, p.style = "stars",
+          p.threshold = c(0.1,0.05,0.01), collapse.se = TRUE,
+          order.terms = c(2,3,4,5,6,7,8,9,10,11,12,13,14,1), 
+          file="regression_table.html")
+```
+
+#Convert HTML table into png image for insertion into documents; zoom=2 doubles the resolution for sharp resizing
+```{r}
+webshot(url="regression_table.html",
+        file="regression_table.png",
+        zoom=2)
+```
+
+# Synthetics Arrests per capita
+```{r}
+s1 <- lm(synth_per_cap~rec_legal+med_legal, data=data)
+s2 <- lm(synth_per_cap~rec_legal+med_legal+violent_per_cap+prop_per_cap+
+           hhic_inf+educ+unemp+white+black+hisp+dem_gov+officer_per_cap
+         ,data=data)
+fs_only <- plm(synth_per_cap~rec_legal+med_legal+factor(year)-1, data=data,
+               index = c("year", "state_agency"),
+                model="within", effect="twoways")
+#one we should use for fixed effects
+fixed_synth <- plm(synth_per_cap~rec_legal+med_legal+violent_per_cap+prop_per_cap+
+           hhic_inf+educ+unemp+white+black+hisp+dem_gov+officer_per_cap+
+           factor(year)-1, data=data, index = c("year", "state_agency"),
+                model="within", effect="twoways")
+# interaction
+synth_int <- plm(synth_per_cap~rec_legal+med_legal+violent_per_cap+prop_per_cap+
+              hhic_inf+educ+unemp+white+black+hisp+dem_gov+officer_per_cap+
+              (black*rec_legal)+factor(year)-1, 
+              data=data, index = c("year", "state_agency"),
+              model="within", effect="twoways")
+
+```
+#display regressions for Synthetics Arrests per Capita
+```{r}
+tab_model(s1,s2,fs_only,fixed_synth,synth_int,
+          pred.labels=c("Constant","Recreationally Legal", "Medically Legal", 
+                        "Violent Crimes per Capita",
+                        "Property Crimes per Capita",
+                        "Median Household Income",
+                        "% Bachelor's or Higher","Unemployment Rate", "% White",
+                        "% Black", "% Hispanic", "Governor's Political Party", 
+                        "Police Officers per Capita", "Black*Rec_Legal"),
+          dv.labels=c("Simple OLS","Multivariate","Fixed Effects",
+                      "Fixed Effects With Controls", "Interaction"),
+          title="Table 7: Regression results for Synthetics Arrests per Capita",
+          robust=TRUE, show.ci = FALSE, p.style = "stars",
+          p.threshold = c(0.1,0.05,0.01), collapse.se = TRUE,
+          order.terms = c(2,3,4,5,6,7,8,9,10,11,12,13,14,1), 
+          file="regression_synth.html")
+```
+
+#VIF Synth
+```{r car}
+vif_synth <- vif(s2)
+print(vif_synth)
+write.csv(vif_synth,"C:/Users/Louar/Desktop/CWRU/Spring_2022/Economics_Capstone/Project/DataAnalysis//vif_synth.csv" )
+```
+
+
+#Other Drugs 
+```{r}
+o1 <- lm(other_per_cap~rec_legal+med_legal, data=data)
+o2 <- lm(other_per_cap~rec_legal+med_legal+violent_per_cap+prop_per_cap+
+           hhic_inf+educ+unemp+white+black+hisp+dem_gov+officer_per_cap
+         ,data=data)
+fixed_only <- plm(other_per_cap~rec_legal+med_legal+factor(year)-1, data=data, 
+                 index = c("year", "state_agency"),
+                model="within", effect="twoways")
+#one we should use for fixed effects
+fixed_other <- plm(other_per_cap~rec_legal+med_legal+violent_per_cap+prop_per_cap+
+           hhic_inf+educ+unemp+white+black+hisp+dem_gov+officer_per_cap+
+           factor(year)-1, data=data, index = c("year", "state_agency"),
+                model="within", effect="twoways")
+# interaction
+other_int <- plm(other_per_cap~rec_legal+med_legal+violent_per_cap+prop_per_cap+
+              hhic_inf+educ+unemp+white+black+hisp+dem_gov+officer_per_cap+
+              (black*rec_legal)+factor(year)-1, 
+              data=data, index = c("year", "state_agency"),
+              model="within", effect="twoways")
+
+```
+#display regressions for Other Drug Arrests per Capita
+```{r}
+tab_model(o1,o2,fixed_only,fixed_other,other_int,
+          pred.labels=c("Constant","Recreationally Legal", "Medically Legal", 
+                        "Violent Crimes per Capita",
+                        "Property Crimes per Capita",
+                        "Median Household Income",
+                        "% Bachelor's or Higher","Unemployment Rate", "% White",
+                        "% Black", "% Hispanic", "Governor's Political Party", 
+                        "Police Officers per Capita", "Black*Rec_Legal"),
+          dv.labels=c("Simple OLS","Multivariate","Fixed Effects",
+                      "Fixed Effects With Controls", "Interaction"),
+          title="Table 8: Regression results for Other Drug Arrests per Capita",
+          robust=TRUE, show.ci = FALSE, p.style = "stars",
+          p.threshold = c(0.1,0.05,0.01), collapse.se = TRUE,
+          order.terms = c(2,3,4,5,6,7,8,9,10,11,12,13,14,1), 
+          file="regression_other.html")
+```
+# Vif Other
+```{r car}
+vif_other <- vif(o2)
+print(vif_other)
+write.csv(vif_other,"C:/Users/Louar/Desktop/CWRU/Spring_2022/Economics_Capstone/Project/DataAnalysis//vif_other.csv" )
+```
+
+#Total Drugs Regressions
+```{r car}
+t1 <- lm(total_drug_per_cap~rec_legal+med_legal, data=data)
+t2 <- lm(total_drug_per_cap~rec_legal+med_legal+violent_per_cap+prop_per_cap+
+           hhic_inf+educ+unemp+white+black+hisp+dem_gov+officer_per_cap
+         ,data=data)
+fixed_only <- plm(total_drug_per_cap~rec_legal+med_legal+factor(year)-1, 
+                  data=data, index = c("year", "state_agency"),
+                model="within", effect="twoways")
+#one we should use for fixed effects
+fixed_total <- plm(total_drug_per_cap~rec_legal+med_legal+violent_per_cap+prop_per_cap+
+           hhic_inf+educ+unemp+white+black+hisp+dem_gov+officer_per_cap+
+           factor(year)-1, data=data, index = c("year", "state_agency"),
+                model="within", effect="twoways")
+# interaction
+total_int <- plm(total_drug_per_cap~rec_legal+med_legal+violent_per_cap+prop_per_cap+
+              hhic_inf+educ+unemp+white+black+hisp+dem_gov+officer_per_cap+
+              (black*rec_legal)+factor(year)-1, 
+              data=data, index = c("year", "state_agency"),
+              model="within", effect="twoways")
+
+```
+#display regressions for Total Drug Arrests per Capita
+```{r}
+tab_model(t1,t2,fixed_only,fixed_total,total_int,
+          pred.labels=c("Constant","Recreationally Legal", "Medically Legal", 
+                        "Violent Crimes per Capita",
+                        "Property Crimes per Capita",
+                        "Median Household Income",
+                        "% Bachelor's or Higher","Unemployment Rate", "% White",
+                        "% Black", "% Hispanic", "Governor's Political Party", 
+                        "Police Officers per Capita", "Black*Rec_Legal"),
+          dv.labels=c("Simple OLS","Multivariate","Fixed Effects",
+                      "FE & Controls", "Interaction"),
+          title="Table 7: Regression results for Total Drug Arrests per Capita",
+          robust=TRUE, show.ci = FALSE, p.style = "stars",
+          p.threshold = c(0.1,0.05,0.01), collapse.se = TRUE,
+          order.terms = c(2,3,4,5,6,7,8,9,10,11,12,13,14,1), 
+          file="regression_total.html")
+```
+
+#Convert HTML table into png image for insertion into documents; zoom=2 doubles the resolution for sharp resizing
+```{r}
+webshot(url="regression_total.html",
+        file="regression_total.png",
+        zoom=2)
+```
+
+# Vif TOTAL
+```{r car}
+vif_total <- vif(t2)
+print(vif_total)
+write.csv(vif_total,"C:/Users/Louar/Desktop/CWRU/Spring_2022/Economics_Capstone/Project/DataAnalysis//vif_total.csv" )
+```
+
+```{r}
+rec_data <- read_csv("rec_data.csv")
+med_data <- read_csv("med_data.csv")
+ill_data <- read_csv("illegal_data.csv")
+```
+```{r}
+rec_states <- unique(rec_data$state)
+med_states <- unique(med_data$state)
+ill_states <- unique(ill_data$state)
+```
+
+```{r}
+data$bucket <- ifelse(data$state %in% med_states, 1, 0)
+data$bucket <- ifelse(data$state %in% rec_states, 2, data$bucket)
+```
+
+```{r}
+data$facbucket <- factor(data$bucket,
+                      levels=c(0,1,2),
+                      labels=c("Illegal", "Med Legal", "Rec Legal"))
+data$facdem_gov <- factor(data$dem_gov,
+                       levels=c(0,1),
+                       labels=c("Republican", "Democrat"))
+data$interaction <- data$rec_legal * data$black
+data <- apply_labels(data,
+                     population = "Population",
+                     narc_per_cap = "Narcotics Arrests",
+                     synth_per_cap = "Synthetic Narc Arrests",
+                     total_drug_per_cap = "Total Drug Arrests",
+                     violent_per_cap = "Violent Crime Arrests",
+                     prop_per_cap = "Property Crime Arrests",
+                     hhic_inf= "Median Household Income",
+                     educ= "% College Degree or Higher",
+                     unemp= "Unemployment",
+                     white= "% White",
+                     black="% Black",
+                     hisp= "% Hispanic",
+                     facdem_gov = "Governor's Political Party",
+                     dem_gov = "Governor's Political Party",
+                     rec_legal = "Rec Legal",
+                     med_legal = "Med Legal",
+                     interaction = "% Black * Rec Legal",
+                     officer_per_cap = "officer_per_cap"
+                     )
+```
+```{r}
+synth_states <- c(ill_states, med_states, "washington")
+synth_data <- subset(data, state %in% synth_states)
+synth_data <- transform(synth_data, ID = as.numeric(factor(state_agency)))
+yakima_exclude <- c("washingtonvancouver",
+               "washingtonkitsap",
+               "washingtonpierce",
+               "washingtontacoma",
+               "washingtoneverett",
+               "washingtonwhatcom",
+               "washingtonbellingham"
+               )
+vancouver_exclude <- c("washingtonyakima",
+               "washingtonkitsap",
+               "washingtonpierce",
+               "washingtontacoma",
+               "washingtoneverett",
+               "washingtonwhatcom",
+               "washingtonbellingham"
+               )
+kitsap_exclude <- c("washingtonvancouver",
+               "washingtonyakima",
+               "washingtonpierce",
+               "washingtontacoma",
+               "washingtoneverett",
+               "washingtonwhatcom",
+               "washingtonbellingham"
+               )
+pierce_exclude <- c("washingtonvancouver",
+               "washingtonkitsap",
+               "washingtonyakima",
+               "washingtontacoma",
+               "washingtoneverett",
+               "washingtonwhatcom",
+               "washingtonbellingham"
+               )
+tacoma_exclude <- c("washingtonvancouver",
+               "washingtonkitsap",
+               "washingtonpierce",
+               "washingtonyakima",
+               "washingtoneverett",
+               "washingtonwhatcom",
+               "washingtonbellingham"
+               )
+everett_exclude <- c("washingtonvancouver",
+               "washingtonkitsap",
+               "washingtonpierce",
+               "washingtontacoma",
+               "washingtonyakima",
+               "washingtonwhatcom",
+               "washingtonbellingham"
+               )
+whatcom_exclude <- c("washingtonvancouver",
+               "washingtonkitsap",
+               "washingtonpierce",
+               "washingtontacoma",
+               "washingtoneverett",
+               "washingtonyakima",
+               "washingtonbellingham"
+               )
+bellingham_exclude <- c("washingtonvancouver",
+               "washingtonkitsap",
+               "washingtonpierce",
+               "washingtontacoma",
+               "washingtoneverett",
+               "washingtonwhatcom",
+               "washingtonyakima"
+               )
+yakima_data <- subset(synth_data, !(state_agency %in% yakima_exclude))
+vancouver_data <- subset(synth_data, !(state_agency %in% vancouver_exclude))
+kitsap_data <- subset(synth_data, !(state_agency %in% kitsap_exclude))
+pierce_data <- subset(synth_data, !(state_agency %in% pierce_exclude))
+tacoma_data <- subset(synth_data, !(state_agency %in% tacoma_exclude))
+everett_data <- subset(synth_data, !(state_agency %in% everett_exclude))
+whatcom_data <- subset(synth_data, !(state_agency %in% whatcom_exclude))
+bellingham_data <- subset(synth_data, !(state_agency %in% bellingham_exclude))
+```
+
+
+
+```{r}
+yakima.out <- dataprep(
+ foo = yakima_data,
+ predictors = c("total_drug_per_cap", "med_legal", "violent_per_cap",
+  "prop_per_cap", "hhic_inf", "unemp", "educ", "white", "black", 
+  "hisp", "dem_gov", "officer_per_cap"),
+ predictors.op = "median",
+ time.predictors.prior = 2008:2012,
+ dependent = "total_drug_per_cap",
+ unit.variable = "ID",
+ unit.names.variable = "state_agency",
+ time.variable = "year",
+ treatment.identifier = 118,
+ controls.identifier = c(1:110, 119:120),
+ time.optimize.ssr = 2008:2012,
+ time.plot = 2008:2019)
+```
+
+
+```{r}
+yakima.synth = synth(data.prep.obj = yakima.out, method = "BFGS")
+```
+
+```{r}
+path.plot(synth.res=yakima.synth,dataprep.res = yakima.out, 
+          Ylab="Total Drug Arrests per 10,000 people",Xlab="year",
+          Ylim = c(0,50),Legend = c("Yakima", 
+                                    "synthetic Yakima"), tr.intake=2012.93,
+          Main="Yakima vs. Synthetic Yakima (2008-2012|2013-2019)",
+          Legend.position = "topright")
+```
+```{r}
+gaps.plot(synth.res = yakima.synth, dataprep.res = yakima.out,
+ Ylab = "gap in total drug arrests per 10,000 people", Xlab= "year",
+ Ylim = c(-100,100), 
+ Main = 'Gaps: Yakima Treated-Synthetic', tr.intake=2012)
+
+```
+
+
+
+
+
+
+```{r}
+vancouver.out <- dataprep(
+ foo = vancouver_data,
+ predictors = c("total_drug_per_cap", "med_legal", "violent_per_cap",
+  "prop_per_cap", "hhic_inf", "unemp", "educ", "dem_gov", "officer_per_cap"),
+ predictors.op = "mean",
+ time.predictors.prior = 2008:2012,
+ dependent = "total_drug_per_cap",
+ unit.variable = "ID",
+ unit.names.variable = "state_agency",
+ time.variable = "year",
+ treatment.identifier = 116,
+ controls.identifier = c(1:110, 119:120),
+ time.optimize.ssr = 2008:2012,
+ time.plot = 2008:2019)
+```
+
+
+```{r}
+vancouver.synth = synth(data.prep.obj = vancouver.out, method = "BFGS", genoud='True')
+```
+```{r}
+synth.tables <- synth.tab(dataprep.res = vancouver.out,
+                          synth.res = vancouver.synth)
+print(synth.tables)
+```
+
+
+
+```{r}
+path.plot(synth.res=vancouver.synth,dataprep.res = vancouver.out, 
+          Ylab="Total Drug Arrests per 10,000 people",Xlab="year",
+          Ylim = c(0,50),Legend = c("Vancouver", 
+                                    "synthetic Vancouver"), tr.intake=2012,
+          Legend.position = "bottomright",
+          Main='Vancouver vs. Synthetic Vancouver (2008-2012 | 2013-2019)')
+```
+```{r}
+gaps.plot(synth.res = vancouver.synth, dataprep.res = vancouver.out,
+ Ylab = "gap in total drug arrests per 10,000 people", Xlab= "year",
+ Ylim = c(-100,100), Main = 'Gaps: Vancouver Treated-Synthetic', 
+ tr.intake=2012)
+
+```
+
+
+
+
+
+
+
+```{r}
+kitsap.out <- dataprep(
+ foo = kitsap_data,
+ predictors = c("total_drug_per_cap", "med_legal", "violent_per_cap",
+  "prop_per_cap", "hhic_inf", "unemp", "educ", "dem_gov", 'officer_per_cap'),
+ predictors.op = "mean",
+ time.predictors.prior = 2008:2012,
+ dependent = "total_drug_per_cap",
+ unit.variable = "ID",
+ unit.names.variable = "state_agency",
+ time.variable = "year",
+ treatment.identifier = 113,
+ controls.identifier = c(1:110, 119:120),
+ time.optimize.ssr = 2008:2012,
+ time.plot = 2008:2019)
+```
+
+
+```{r}
+kitsap.synth = synth(data.prep.obj = kitsap.out, method = "BFGS", genoud='True')
+```
+
+```{r}
+path.plot(synth.res=kitsap.synth,dataprep.res = kitsap.out, 
+          Ylab="Total Drug Arrests per 10,000 people",Xlab="year",
+          Ylim = c(0,50),Legend = c("Kitsap", 
+                                    "synthetic Kitsap"),
+          Legend.position = "topright",
+          Main ='Kitsap vs. Synthetic Kitsap (2008-2012 | 2013-2019)',
+          tr.intake=2012)
+```
+```{r}
+gaps.plot(synth.res = kitsap.synth, dataprep.res = kitsap.out,
+ Ylab = "gap in total drug arrests per 10,000 people", Xlab= "year",
+ Ylim = c(-100,100), Main = 'Gap: Kitsap Treated-Synthetic',
+ tr.intake=2012)
+
+```
+
+
+
+
+
+
+
+
+```{r}
+pierce.out <- dataprep(
+ foo = pierce_data,
+ predictors = c("total_drug_per_cap", "med_legal", "narc_per_cap", 
+                "violent_per_cap", "prop_per_cap", "hhic_inf", "unemp", 
+                "educ", "dem_gov", 'officer_per_cap'),
+ predictors.op = "mean",
+ time.predictors.prior = 2008:2012,
+ dependent = "total_drug_per_cap",
+ unit.variable = "ID",
+ unit.names.variable = "state_agency",
+ time.variable = "year",
+ treatment.identifier = 114,
+ controls.identifier = c(1:110, 119:120),
+ time.optimize.ssr = 2008:2012,
+ time.plot = 2008:2019)
+```
+
+
+```{r}
+pierce.synth = synth(data.prep.obj = pierce.out, method = "BFGS", genoud='True')
+```
+
+```{r}
+path.plot(synth.res=pierce.synth,dataprep.res = pierce.out, 
+          Ylab="Total Drug Arrests per 10,000 people",Xlab="year",
+          Ylim = c(0,50),Legend = c("Pierce", 
+                                    "synthetic Pierce"),
+          Legend.position = "topright", tr.intake=2012,
+          Main='Pierce vs. Synthetic Pierce (2008-2012 | 2013-2019)')
+```
+```{r}
+gaps.plot(synth.res = pierce.synth, dataprep.res = pierce.out,
+ Ylab = "gap in total drug arrests per 10,000 people", Xlab= "year",
+ Ylim = c(-100,100), Main = 'Gap: Pierce Treated-Synthetic',
+ tr.intake=2012)
+
+```
+
+
+
+
+
+
+
+```{r}
+tacoma.out <- dataprep(
+ foo = tacoma_data,
+ predictors = c("total_drug_per_cap","med_legal", "population", "narc_per_cap", "violent_per_cap",
+  "prop_per_cap", "hhic_inf", "unemp", "educ", "white", "black", "hisp", "dem_gov", "officer_per_cap"),
+ predictors.op = "mean",
+ time.predictors.prior = 2008:2012,
+ dependent = "total_drug_per_cap",
+ unit.variable = "ID",
+ unit.names.variable = "state_agency",
+ time.variable = "year",
+ treatment.identifier = 115,
+ controls.identifier = c(1:110, 119:120),
+ time.optimize.ssr = 2008:2012,
+ time.plot = 2008:2019)
+```
+
+
+```{r}
+tacoma.synth = synth(data.prep.obj = tacoma.out, method = "BFGS")
+```
+
+```{r}
+path.plot(synth.res=tacoma.synth,dataprep.res = tacoma.out, 
+          Ylab="Total Drug Arrests per 10,000 people",Xlab="year",
+          Ylim = c(0,50),Legend = c("Tacoma", 
+                                    "synthetic Tacoma"),
+          Legend.position = "topright", tr.intake=2012,
+          Main='Tacoma vs. Synthetic Tacoma (2008-2012 | 2013-2019)')
+```
+```{r}
+gaps.plot(synth.res = tacoma.synth, dataprep.res = tacoma.out,
+ Ylab = "gap in total drug arrests per 10,000 people", Xlab= "year",
+ Ylim = c(-100,100), Main = 'Gap: Tacoma Treated-Synthetic',
+  tr.intake=2012)
+
+```
+
+
+
+
+```{r}
+everett.out <- dataprep(
+ foo = everett_data,
+ predictors = c("total_drug_per_cap","med_legal", "violent_per_cap",
+  "prop_per_cap", "hhic_inf", "unemp", "educ", "white", "black", "hisp", 
+  "dem_gov", "officer_per_cap"),
+ predictors.op = "mean",
+ time.predictors.prior = 2008:2012,
+ dependent = "total_drug_per_cap",
+ unit.variable = "ID",
+ unit.names.variable = "state_agency",
+ time.variable = "year",
+ treatment.identifier = 112,
+ controls.identifier = c(1:110, 119:120),
+ time.optimize.ssr = 2008:2012,
+ time.plot = 2008:2019)
+```
+
+
+```{r}
+everett.synth = synth(data.prep.obj = everett.out, method = "BFGS")
+```
+
+```{r}
+path.plot(synth.res=everett.synth,dataprep.res = everett.out, 
+          Ylab="Total Drug Arrests per 10,000 people",Xlab="year",
+          Ylim = c(0,50),Legend = c("Everett", 
+                                    "synthetic Everett"),
+          Legend.position = "bottomright", tr.intake=2012,
+          Main="Everett vs. Synthetic Everett (2008-2012 | 2013-2019)")
+```
+```{r}
+gaps.plot(synth.res = everett.synth, dataprep.res = everett.out,
+ Ylab = "gap in total drug arrests per 10,000 people", Xlab= "year",
+ Ylim = c(-100,100), Main = "Gap: Everett Treated-Synthetic",
+ tr.intake=2012)
+
+```
+
+
+
+
+
+
+
+```{r}
+whatcom.out <- dataprep(
+ foo = whatcom_data,
+ predictors = c("total_drug_per_cap", "med_legal", "violent_per_cap",
+  "prop_per_cap", "hhic_inf", "unemp", "educ", "white", "black", "hisp", 
+  "dem_gov","officer_per_cap"),
+ predictors.op = "mean",
+ time.predictors.prior = 2008:2012,
+ dependent = "total_drug_per_cap",
+ unit.variable = "ID",
+ unit.names.variable = "state_agency",
+ time.variable = "year",
+ treatment.identifier = 117,
+ controls.identifier = c(1:110, 119:120),
+ time.optimize.ssr = 2008:2012,
+ time.plot = 2008:2019)
+```
+
+
+```{r}
+whatcom.synth = synth(data.prep.obj = whatcom.out, method = "BFGS")
+```
+
+```{r}
+path.plot(synth.res=whatcom.synth,dataprep.res = whatcom.out, 
+          Ylab="Total Drug Arrests per 10,000 people",Xlab="year",
+          Ylim = c(0,50),Legend = c("Whatcom", 
+                                    "synthetic Whatcom"),
+          Legend.position = "bottomright", tr.intake=2012,
+          Main="Whatcom vs. Synthetic Whatcom (2008-2012 | 2013-2019)")
+```
+```{r}
+gaps.plot(synth.res = whatcom.synth, dataprep.res = whatcom.out,
+ Ylab = "gap in total drug arrests per 10,000 people", Xlab= "year",
+ Ylim = c(-100,100), Main = "Gap: Whatcom Treated-Synthetic",
+ tr.intake=2012)
+
+```
+
+
+
+
+
+
+```{r}
+bellingham.out <- dataprep(
+ foo = bellingham_data,
+ predictors = c("total_drug_per_cap", "med_legal", "violent_per_cap",
+  "prop_per_cap", "hhic_inf", "unemp", "educ", 
+  "white", "black", "hisp", "dem_gov", "officer_per_cap"),
+ predictors.op = "mean",
+ time.predictors.prior = 2008:2012,
+ dependent = "total_drug_per_cap",
+ unit.variable = "ID",
+ unit.names.variable = "state_agency",
+ time.variable = "year",
+ treatment.identifier = 111,
+ controls.identifier = c(1:110, 119:120),
+ time.optimize.ssr = 2008:2012,
+ time.plot = 2008:2019)
+```
+
+
+```{r}
+bellingham.synth = synth(data.prep.obj = bellingham.out, method = "BFGS")
+```
+
+```{r}
+path.plot(synth.res=bellingham.synth,dataprep.res = bellingham.out, 
+          Ylab="Total Drug Arrests per 10,000 people",Xlab="year",
+          Ylim = c(0,50),Legend = c("Bellingham", 
+                                    "synthetic Bellingham"),
+          Legend.position = "bottomright", tr.intake=2012,
+          Main='Bellingham vs. Synthetic Bellingham (2008-2012 | 2013-2019)')
+```
+```{r}
+gaps.plot(synth.res = bellingham.synth, dataprep.res = bellingham.out,
+ Ylab = "gap in total drug arrests per 10,000 people", Xlab= "year",
+ Ylim = c(-20,20), Main = 'Gap: Bellingham Treated-Synthetic',
+ tr.intake=2012)
+
+```
